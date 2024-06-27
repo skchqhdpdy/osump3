@@ -3,7 +3,7 @@ import os
 import random
 import threading
 from pynput import keyboard
-import pygame
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"; import pygame
 import time
 import requests
 from tqdm import tqdm
@@ -15,8 +15,7 @@ import pypresence
 import asyncio
 import traceback
 
-version = "2.1.0"
-version_hash = calculate_md5.file(os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0])
+version = "2.1.1"
 requestHeaders = {"User-Agent": "osump3"}
 pygame.init() #pygame 초기화
 pygame.mixer.init()
@@ -31,12 +30,15 @@ def KillProgram(): os.system(f"taskkill /f /pid {os.getpid()}")
 if os.name != "nt": print("This Program Is Work Only Windows System!!"); KillProgram()
 
 try:
-    nv = requests.get("https://raw.githubusercontent.com/skchqhdpdy/osump3/main/version.txt", headers=requestHeaders).text
-    if version != nv.split("\n")[0]:
+    ProcessName = os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0]
+    version_hash = calculate_md5.file(ProcessName) if ProcessName != "python.exe" else ""
+    print(f"\npid : {os.getpid()} | ProcessName : {ProcessName} | version_hash : {version_hash}")
+    nv = requests.get("https://raw.githubusercontent.com/skchqhdpdy/osump3/main/version.txt", headers=requestHeaders).text.split("\n")
+    if version != nv[0]:
         print(f"업데이트 있음! \n현재버전 : {version} \n최신버전 : {nv[0]}")
         print("https://github.com/skchqhdpdy/osump3")
         if input("Press Enter to exit...") != "ignore": KillProgram()
-    elif version_hash != nv.split("\n")[1]:
+    elif ProcessName != "python.exe" and version_hash != nv[1]:
         print(f"업데이트 있음! \n버전은 같지만 파일 Hash 값이 다름! \n현재 Hash 값 : {version_hash} \n최신 Hash 값 : {nv[1]}")
         print("https://github.com/skchqhdpdy/osump3")
         if input("Press Enter to exit...") != "ignore": KillProgram()
