@@ -11,22 +11,38 @@ import hashlib
 import zipfile
 from pydub.utils import mediainfo
 import ctypes
+from pypresence import Presence
+
+pygame.init() #pygame 초기화
+pygame.mixer.init()
+np = bid = VolumeUniversal = VolumeMusic = uSel = ""
+songPause = False
+songStatus = "Stoped"
+vol = 10
+
+#Rich Presence 연결
+st = time.time()
+rpc = Presence(1255696229439111169) #디스코드 애플리케이션의 클라이언트 ID
+rpc.connect()
+rpc.clear()
+
+def KillProgram(): pygame.mixer.music.stop(); pygame.quit(); rpc.clear(); os._exit(0)
 
 requestHeaders = {"User-Agent": "osump3"}
-version = "1.0.0"
+version = "2.0.0"
 try:
     nv = requests.get("https://raw.githubusercontent.com/skchqhdpdy/osump3/main/version.txt", headers=requestHeaders).text
     if version != nv:
         print(f"업데이트 있음!\n현재버전 : {version}\n최신버전 : {nv}")
         print("https://github.com/skchqhdpdy/osump3")
         if input("Press Enter to exit...") != "ignore":
-            exit()
+            KillProgram()
 except Exception as e:
     print(f"Version Check Error | {e}")
 
 #ffmpeg 설치확인
 if os.system(f"ffmpeg -version > {'nul' if os.name == 'nt' else '/dev/null'} 2>&1") != 0:
-    if not ctypes.windll.shell32.IsUserAnAdmin() != 0: input("관리자 권한으로 실행하세요!"); exit()
+    if not ctypes.windll.shell32.IsUserAnAdmin() != 0: input("관리자 권한으로 실행하세요!"); KillProgram()
 
     print("https://aodd.xyz/file%20hosting/Downloads/ffmpeg.zip --> C:\\Program Files\\ffmpeg osump3")
     ff = requests.get("https://aodd.xyz/file%20hosting/Downloads/ffmpeg.zip", headers=requestHeaders, stream=True)
@@ -54,10 +70,6 @@ def getOsupath():
 osu_path = getOsupath()
 if not osu_path: osu_path = input("Error! Not Found osu! Path! \nInput osu! Root Folder Path : ").replace("\\", "/") + "/"
 
-np = bid = VolumeUniversal = VolumeMusic = uSel = ""
-songPause = False
-songStatus = "Stoped"
-vol = 10
 cfg = [i for i in os.listdir(f"{osu_path}") if i.endswith(".cfg")]
 cfg = f"{osu_path}osu!.{os.environ.get('USERNAME')}.cfg" if f"osu!.{os.environ.get('USERNAME')}.cfg" in cfg else None
 if cfg:
@@ -68,10 +80,6 @@ if cfg:
         VolumeMusic = int(cfg[2].replace("VolumeMusic = ", ""))
         vol = round((VolumeUniversal / 100) * (VolumeMusic / 100) * 100, 2)
 print(f"Default Volume : {vol} | (VolumeUniversal : {VolumeUniversal}, VolumeMusic : {VolumeMusic})")
-
-# pygame 초기화
-pygame.init()
-pygame.mixer.init()
 
 class calculate_md5:
     @classmethod
@@ -122,6 +130,12 @@ def song_process():
     percent = f"{round((now / length) * 100, 2)}%"
     return [now, length, percent] if now != -1 else [length, length, "100%"]
 
+def DRP_np():
+    try:
+        SP = song_process()
+        return f"{np} | {SP[0]}/{SP[1]} {SP[2]} | {songStatus}"
+    except: return f"{np} | ?/? ?% | {songStatus}"
+
 def on_press(key):
     global songPause
     try:
@@ -134,55 +148,94 @@ def on_press(key):
 listener = keyboard.Listener(on_press=on_press)
 listener.start()
 
-# 콘솔 입력 처리 함수
+#콘솔 입력 처리 함수
 def ccmd():
     global vol, songPause, songStatus
     while True:
-        i = input("command : ")
-        if i.lower() == "help" or i.lower() == "h":
-            print("\nhelp (h) || command list"); print("np (n) || Now Playing"); print("vol (v) 1~100 || Volume Check/Setting")
-            print("resume (r) || resume song ('F2' Key same this)"); print("pause (p) || pause song ('F3' Key same this)"); print("skip (s) || skip ('F5' Key same this)")
-            print("s/{BeatmapSetID} || Play Song With BeatmapSetID"); print("b/{BeatmapSetID} || Play Song With BeatmapID"); print("cho (c) || Open Bancho Link")
-            print("redstar (red) || Open Redstar Link"); print("exit (kill, x) || exit this program") ;print()
+        try:
+            i = input("command : ")
+            if i.lower() == "help" or i.lower() == "h":
+                print("\nhelp (h) || command list"); print("np (n) || Now Playing"); print("vol (v) 1~100 || Volume Check/Setting")
+                print("resume (r) || resume song ('F2' Key same this)"); print("pause (p) || pause song ('F3' Key same this)"); print("skip (s) || skip ('F5' Key same this)")
+                print("s/{BeatmapSetID} || Play Song With BeatmapSetID"); print("b/{BeatmapSetID} || Play Song With BeatmapID"); print("cho (c) || Open Bancho Link")
+                print("redstar (red) || Open Redstar Link"); print("exit (kill, x) || exit this program"); print()
 
-        elif i.lower() == "np" or i.lower() == "n": SP = song_process(); print(f"{np} | {SP[0]}/{SP[1]} {SP[2]} | {songStatus}")
-        elif i.lower() == "vol" or i.lower() == "v": print(f"{vol}%")
-        elif i.startswith("vol") or i.startswith("v "):
-            try:
-                vol = int(i.split(" ")[1])
-                if not 0 <= vol <= 100: raise
-                pygame.mixer.music.set_volume(vol / 100)
-                print(f"Changed {vol}%")
-            except:
-                print("Use That | vol 0~100")
-        elif i.startswith("s/") or i.startswith("b/"):
-            global uSel
-            id = None
-            try: id = int(i.replace('b/', ''))
-            except: pass
-            try: id = f"+{int(i.replace('s/', ''))}"
-            except: pass
-            if not id: print(f"Use That | s/1663512 | b/1919312"); continue
-            if not os.path.isfile(f"{osu_path}osump3/audio/{id}"):
-                audio = requests.get(f"https://b.redstar.moe/audio/{id}", headers=requestHeaders)
-                if audio.status_code == 200:
-                    if not os.path.isdir(f"{osu_path}osump3/audio"): os.makedirs(f"{osu_path}osump3/audio")
-                    with open(f"{osu_path}osump3/audio/{id}", "wb") as f:
-                        f.write(audio.content)
+            elif i.lower() == "np" or i.lower() == "n": print(DRP_np())
+            elif i.lower() == "vol" or i.lower() == "v": print(f"{vol}%")
+            elif i.startswith("vol") or i.startswith("v "):
+                try:
+                    vol = int(i.split(" ")[1])
+                    if not 0 <= vol <= 100: raise
+                    pygame.mixer.music.set_volume(vol / 100)
+                    print(f"Changed {vol}%")
+                except:
+                    print("Use That | vol 0~100")
+            elif i.startswith("s/") or i.startswith("b/"):
+                global uSel
+                id = None
+                try: id = int(i.replace('b/', ''))
+                except: pass
+                try: id = f"+{int(i.replace('s/', ''))}"
+                except: pass
+                if not id: print(f"Use That | s/1663512 | b/1919312"); continue
+                if not os.path.isfile(f"{osu_path}osump3/audio/{id}"):
+                    audio = requests.get(f"https://b.redstar.moe/audio/{id}", headers=requestHeaders)
+                    if audio.status_code == 200:
+                        if not os.path.isdir(f"{osu_path}osump3/audio"): os.makedirs(f"{osu_path}osump3/audio")
+                        with open(f"{osu_path}osump3/audio/{id}", "wb") as f:
+                            f.write(audio.content)
 
-            uSel = f"{osu_path}osump3/audio/{id}"
-            print(uSel)
-            skip_song()
-        elif i.lower() == "cho" or i.lower() == "c": os.system(f"start https://osu.ppy.sh/b/{bid}") if type(bid) == int else print("BeatmapID Not Found!")
-        elif i.lower() == "redstar" or i.lower() == "red": os.system(f"start https://redstar.moe/b/{bid}") if type(bid) == int else print("BeatmapID Not Found!")
-        elif i.lower() == "resume" or i.lower() == "r": toggle_pause()
-        elif i.lower() == "pause" or i.lower() == "p": toggle_pause()
-        elif i.lower() == "skip" or i.lower() == "s": skip_song()
-        elif i.lower() == "exit" or i.lower() == "kill" or i.lower() == "x": pygame.mixer.music.stop(); pygame.quit(); os._exit(0)
-
-# 콘솔 입력을 처리하는 스레드 시작
-console_thread = threading.Thread(target=ccmd)
+                uSel = f"{osu_path}osump3/audio/{id}"
+                print(uSel)
+                skip_song()
+            elif i.lower() == "cho" or i.lower() == "c": os.system(f"start https://osu.ppy.sh/b/{bid}") if type(bid) == int else print("BeatmapID Not Found!")
+            elif i.lower() == "redstar" or i.lower() == "red": os.system(f"start https://redstar.moe/b/{bid}") if type(bid) == int else print("BeatmapID Not Found!")
+            elif i.lower() == "resume" or i.lower() == "r": toggle_pause()
+            elif i.lower() == "pause" or i.lower() == "p": toggle_pause()
+            elif i.lower() == "skip" or i.lower() == "s": skip_song()
+            elif i.lower() == "exit" or i.lower() == "kill" or i.lower() == "x": KillProgram()
+        except KeyboardInterrupt: print("ctrl + c"); KillProgram()
+        except: continue
+console_thread = threading.Thread(target=ccmd) #콘솔 입력을 처리하는 스레드 시작
 console_thread.start()
+
+def DiscordRichPresence():
+    rpc.clear()
+    while True:
+        try:
+            nt = int(time.time() - st)
+            if nt < 3600: nt = time.strftime("%M:%S", time.gmtime(nt))
+            else: nt = time.strftime("%H:%M:%S", time.gmtime(nt))
+            rpc.update(
+                start=st,
+                state=f"https://redstar.moe/b/{bid}",
+                details=f"Listening {DRP_np()}",
+                large_image=f"https://b.redstar.moe/bg/{bid}",
+                large_text=f"https://b.redstar.moe/bg/{bid}",
+                small_image="https://raw.githubusercontent.com/skchqhdpdy/osump3/main/icon.jpg",
+                small_text="https://github.com/skchqhdpdy/osump3",
+                buttons=[
+                    {"label": "Bancho", "url": f"https://osu.ppy.sh/b/{bid}"},
+                    {"label": "Redstar", "url": f"https://redstar.moe/b/{bid}"}
+                ]
+            )
+        except KeyboardInterrupt: rpc.clear()
+        except Exception as e:
+            rpc.update(
+                start=st,
+                state=f"https://redstar.moe/b/{bid}",
+                details=f"Listening Error! (np Error!)",
+                large_image=f"https://b.redstar.moe/bg/{bid}",
+                large_text=f"https://b.redstar.moe/bg/{bid}",
+                small_image="https://raw.githubusercontent.com/skchqhdpdy/osump3/main/icon.jpg",
+                small_text="https://github.com/skchqhdpdy/osump3",
+                buttons=[
+                    {"label": "Bancho", "url": f"https://osu.ppy.sh/b/{bid}"},
+                    {"label": "Redstar", "url": f"https://redstar.moe/b/{bid}"}
+                ]
+            )
+DRP = threading.Thread(target=DiscordRichPresence)
+DRP.start()
 
 BeatmapSets = []
 for i in os.listdir(f"{osu_path}Songs"):
@@ -209,6 +262,7 @@ while True:
 
         #mp3 파일명 추출
         with open(f"{osu_path}Songs/{Set}/{Beatmap}", 'r', encoding="utf-8") as f:
+            #### A:/osu!/Songs/beatmap-637515017600437735-Camellia - SECRET BOSS/audio.mp3 | 83/273 30.4% | Playing
             bmd5 = calculate_md5.file(f"{osu_path}Songs/{Set}/{Beatmap}")
             try:
                 bid = int(requests.get(f"https://cheesegull.redstar.moe/api/md5/{bmd5}", headers=requestHeaders).json()["BeatmapID"])
