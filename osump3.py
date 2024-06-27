@@ -7,7 +7,7 @@ import pygame
 import time
 import requests
 from tqdm import tqdm
-import hashlib
+from md5Check import calculate_md5
 import zipfile
 from pydub.utils import mediainfo
 import ctypes
@@ -16,6 +16,7 @@ import asyncio
 import traceback
 
 version = "2.1.0"
+version_hash = calculate_md5.file(os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0])
 requestHeaders = {"User-Agent": "osump3"}
 pygame.init() #pygame 초기화
 pygame.mixer.init()
@@ -31,8 +32,12 @@ if os.name != "nt": print("This Program Is Work Only Windows System!!"); KillPro
 
 try:
     nv = requests.get("https://raw.githubusercontent.com/skchqhdpdy/osump3/main/version.txt", headers=requestHeaders).text
-    if version != nv:
-        print(f"업데이트 있음!\n현재버전 : {version}\n최신버전 : {nv}")
+    if version != nv.split("\n")[0]:
+        print(f"업데이트 있음! \n현재버전 : {version} \n최신버전 : {nv[0]}")
+        print("https://github.com/skchqhdpdy/osump3")
+        if input("Press Enter to exit...") != "ignore": KillProgram()
+    elif version_hash != nv.split("\n")[1]:
+        print(f"업데이트 있음! \n버전은 같지만 파일 Hash 값이 다름! \n현재 Hash 값 : {version_hash} \n최신 Hash 값 : {nv[1]}")
         print("https://github.com/skchqhdpdy/osump3")
         if input("Press Enter to exit...") != "ignore": KillProgram()
 except: exceptionE()
@@ -81,20 +86,6 @@ if cfg:
         VolumeMusic = int(cfg[2].replace("VolumeMusic = ", ""))
         vol = round((VolumeUniversal / 100) * (VolumeMusic / 100) * 100, 2)
 print(f"Default Volume : {vol} | (VolumeUniversal : {VolumeUniversal}, VolumeMusic : {VolumeMusic})")
-
-class calculate_md5:
-    @classmethod
-    def file(cls, fn) -> str:
-        md5 = hashlib.md5()
-        with open(fn, "rb") as f:
-            md5.update(f.read())
-        return md5.hexdigest()
-
-    @classmethod
-    def text(cls, t) -> str:
-        md5 = hashlib.md5()
-        md5.update(t.encode("utf-8"))
-        return md5.hexdigest()
 
 #play
 def mp3Play(np):
