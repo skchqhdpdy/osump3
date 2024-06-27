@@ -11,12 +11,12 @@ from md5Check import calculate_md5
 import zipfile
 from pydub.utils import mediainfo
 import ctypes
-import pypresence
+from pypresence import Presence, exceptions
 import asyncio
 import traceback
 import sys
 
-version = "2.2.1"
+version = "2.2.2"
 requestHeaders = {"User-Agent": "osump3"}
 pygame.init() #pygame 초기화
 pygame.mixer.init()
@@ -71,6 +71,7 @@ if os.system(f"ffmpeg -version > {'nul' if os.name == 'nt' else '/dev/null'} 2>&
         winreg.SetValueEx(key, 'Path', 0, winreg.REG_EXPAND_SZ, new_path) #변경된 Path 값을 설정
         print("Set ffmpeg System Environment Variables")
     else: print("Exist ffmpeg System Environment Variables")
+    input("\n이제 이 프로그램을 다시 껐다 키세요! (관리자 권한 필요 없음)"); KillProgram()
 
 def getOsupath():
     try:
@@ -211,14 +212,14 @@ def rcpConn():
         try:
             loop = asyncio.new_event_loop() #현재 스레드에 이벤트 루프를 생성하고 설정합니다.
             asyncio.set_event_loop(loop)
-            rpc = pypresence.Presence(1255696229439111169) #디스코드 애플리케이션의 클라이언트 ID
+            rpc = Presence(1255696229439111169) #디스코드 애플리케이션의 클라이언트 ID
             rpc.connect()
             rpc.clear()
             #loop.run_forever() #이벤트 루프를 실행합니다.
             print("\n    Connected To Discord!"); rpcStatus = "Running"
             return rpc
-        except pypresence.exceptions.DiscordNotFound: rpcStatus = "Not Running"
-        except pypresence.exceptions.DiscordError: rpcStatus = "Not Running"
+        except exceptions.DiscordNotFound: rpcStatus = "Not Running"
+        except exceptions.DiscordError: rpcStatus = "Not Running"
         except: rpcStatus = exceptionE()
         time.sleep(1)
 def rpcUpdate(details):
@@ -244,8 +245,8 @@ def DiscordRichPresence():
             if len(details) > 128:
                 details = DRP_np(Nnp[Nnp.find(" - ") + 3:])
             rpcUpdate(details)
-        except pypresence.exceptions.InvalidID: rcpConn()
-        except pypresence.exceptions.ServerError: rpcUpdate(f"{songStatus} | Error! (np Error!)")
+        except exceptions.InvalidID: rcpConn()
+        except exceptions.ServerError: rpcUpdate(f"{songStatus} | Error! (np Error!)")
         except: exceptionE()
         time.sleep(1)
 DRP = threading.Thread(target=DiscordRichPresence)
