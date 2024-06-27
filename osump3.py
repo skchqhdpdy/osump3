@@ -14,8 +14,9 @@ import ctypes
 import pypresence
 import asyncio
 import traceback
+import sys
 
-version = "2.1.2"
+version = "2.2.0"
 requestHeaders = {"User-Agent": "osump3"}
 pygame.init() #pygame 초기화
 pygame.mixer.init()
@@ -31,8 +32,9 @@ if os.name != "nt": print("This Program Is Work Only Windows System!!"); KillPro
 
 try:
     ProcessName = os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0]
-    version_hash = calculate_md5.file(ProcessName) if ProcessName != "python.exe" else ""
-    print(f"\npid : {os.getpid()} | ProcessName : {ProcessName} | version : {version} | version_hash : {version_hash}")
+    ProcessPath = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(sys.argv[0]) #환경 변수 세팅시에 경로가 cmd의 현재 경로로 설정되는 것 방지
+    version_hash = calculate_md5.file(ProcessPath) if ProcessName != "python.exe" else ""
+    print(f"\npid : {os.getpid()} | ProcessName : {ProcessName} | ProcessPath : {ProcessPath} | version : {version} | version_hash : {version_hash}")
     nv = requests.get("https://raw.githubusercontent.com/skchqhdpdy/osump3/main/version.txt", headers=requestHeaders).text.split("\n")
     if version != nv[0]:
         print(f"업데이트 있음! \n현재버전 : {version} \n최신버전 : {nv[0]}")
@@ -42,7 +44,9 @@ try:
         print(f"업데이트 있음! \n버전은 같지만 파일 Hash 값이 다름! \n현재 Hash 값 : {version_hash} \n최신 Hash 값 : {nv[1]}")
         print("https://github.com/skchqhdpdy/osump3"); os.system("start https://github.com/skchqhdpdy/osump3")
         if input("Press Enter to exit...") != "ignore": KillProgram()
-except: exceptionE()
+except:
+    exceptionE()
+    if input("version Check Fail! ignore? (y/n) : ") == "n": KillProgram()
 
 #ffmpeg 설치확인
 if os.system(f"ffmpeg -version > {'nul' if os.name == 'nt' else '/dev/null'} 2>&1") != 0:
@@ -62,7 +66,7 @@ if os.system(f"ffmpeg -version > {'nul' if os.name == 'nt' else '/dev/null'} 2>&
     #시스템 환경변수 Path의 키
     key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 0, winreg.KEY_ALL_ACCESS)
     current_path, _ = winreg.QueryValueEx(key, 'Path') #현재 Path 값을 읽어옴
-    if "C:\\Program Files\\ffmpeg osump3\\bin" not in current_path:
+    if "C:\\Program Files\\ffmpeg osump3\\bin" not in current_path.split(";"):
         new_path = f"{current_path};C:\\Program Files\\ffmpeg osump3\\bin" #기존 Path에 새 경로 추가
         winreg.SetValueEx(key, 'Path', 0, winreg.REG_EXPAND_SZ, new_path) #변경된 Path 값을 설정
         print("Set ffmpeg System Environment Variables")
