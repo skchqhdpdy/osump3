@@ -4,8 +4,8 @@
 ---
 ---
 ## version
-- version : 2.2.0
-- version_hash : 63403208b8fa134520a5d65fc991d8d5
+- version : 2.2.1
+- version_hash : a3f748db0b0f2543ef7ba386fbcebbf4
 ---
 ---
 ## Discord Rich Presence

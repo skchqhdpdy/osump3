@@ -16,7 +16,7 @@ import asyncio
 import traceback
 import sys
 
-version = "2.2.0"
+version = "2.2.1"
 requestHeaders = {"User-Agent": "osump3"}
 pygame.init() #pygame 초기화
 pygame.mixer.init()
@@ -154,12 +154,15 @@ def ccmd():
         try:
             i = input("command : ")
             if i.lower() == "help" or i.lower() == "h":
-                print("\n    help (h) || command list"); print("    np (n) || Now Playing"); print("    vol (v) 1~100 || Volume Check/Setting")
-                print("    resume (r) || resume song ('F2' Key same this)"); print("    pause (p) || pause song ('F3' Key same this)"); print("    skip (s) || skip ('F5' Key same this)")
-                print("    s/{BeatmapSetID} || Play Song With BeatmapSetID"); print("    b/{BeatmapSetID} || Play Song With BeatmapID"); print("    cho (c) || Open Bancho Link")
-                print("    redstar (red) || Open Redstar Link"); print("    discord (rpc) || Check Discord Rich Presence Status"); print("    exit (kill, x) || exit this program")
-                print()
+                print("\n    help (h) || command list"); print(f"    version (ver) || Check Program's version"); print("    np (n) || Now Playing")
+                print("    vol (v) 1~100 || Volume Check/Setting"); print("    resume (r) || resume song ('F2' Key same this)"); print("    pause (p) || pause song ('F3' Key same this)")
+                print("    skip (s) || skip ('F5' Key same this)"); print("    s/{BeatmapSetID} || Play Song With BeatmapSetID"); print("    b/{BeatmapSetID} || Play Song With BeatmapID")
+                print("    cho (c) || Open Bancho Link"); print("    redstar (red) || Open Redstar Link"); print("    discord (rpc) || Check Discord Rich Presence Status")
+                print("    exit (kill, x) || exit this program"); print()
 
+            elif i.lower() == "version" or i.lower() == "ver":
+                print(f"    현재버전 : {version} | 최신버전 : {nv[0]}")
+                print(f"    현재 Hash 값 : {version_hash} | 최신 Hash 값 : {nv[1]}")
             elif i.lower() == "np" or i.lower() == "n": print(f"    {DRP_np()}")
             elif i.lower() == "vol" or i.lower() == "v": print(f"    {vol}%")
             elif i.startswith("vol") or i.startswith("v "):
