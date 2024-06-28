@@ -16,7 +16,7 @@ import asyncio
 import traceback
 import sys
 
-version = "2.3.0"
+version = "2.3.1"
 ProcessName = os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0]
 ProcessPath = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(sys.argv[0]) #환경 변수 세팅시에 경로가 cmd의 현재 경로로 설정되는 것 방지
 version_hash = calculate_md5.file(ProcessPath) if ProcessName != "python.exe" else ""
@@ -312,7 +312,7 @@ for i in os.listdir(f"{osu_path}/Songs"):
 
 while True:
     if uSel and type(uSel) is str:
-        id = np.split("/")
+        id = uSel.split("/")
         id = id[-1]
         if "+" in id:
             try: bid = int(requests.get(f"https://b.redstar.moe/filesinfo/{id.replace('+', '')}", headers=requestHeaders).json()["RedstarOSU"][1])
