@@ -16,7 +16,7 @@ import asyncio
 import traceback
 import sys
 
-version = "2.3.1"
+version = "2.3.2"
 ProcessName = os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0]
 ProcessPath = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(sys.argv[0]) #환경 변수 세팅시에 경로가 cmd의 현재 경로로 설정되는 것 방지
 version_hash = calculate_md5.file(ProcessPath) if ProcessName != "python.exe" else ""
@@ -34,20 +34,23 @@ def KillProgram(): os.system(f"taskkill /f /pid {os.getpid()}")
 
 if os.name != "nt": print("This Program Is Work Only Windows System!!"); KillProgram()
 
+def dl(link, Path):
+    d = requests.get(link, headers=requestHeaders, stream=True, timeout=10)
+    with open(Path, 'wb') as file:
+        with tqdm(total=int(d.headers.get('Content-Length', 0)), unit='B', unit_scale=True, unit_divisor=1024, ncols=60) as pbar:
+            for data in d.iter_content(1024):
+                file.write(data)
+                pbar.update(len(data))
+
 try:
     print(f"\npid : {os.getpid()} | ProcessName : {ProcessName} | ProcessPath : {ProcessPath} | version : {version} | version_hash : {version_hash}")
 
     def update_osump3(): #자동 업데이트
         os.rename(ProcessPath, f"{ProcessPath.replace('osump3.exe', f'osump3-v{version}.exe')}")
-        nf = requests.get("https://github.com/skchqhdpdy/osump3/raw/main/osump3.exe", headers=requestHeaders, stream=True)
-        with open(ProcessPath, 'wb') as file:
-            with tqdm(total=int(nf.headers.get('Content-Length', 0)), unit='B', unit_scale=True, unit_divisor=1024, ncols=60) as pbar:
-                for data in nf.iter_content(1024):
-                    file.write(data)
-                    pbar.update(len(data))
+        dl("https://github.com/skchqhdpdy/osump3/raw/main/osump3.exe", ProcessPath)
         #os.remove(f"{ProcessPath.replace('.exe', f'-v{version}.exe')}")
         input("\n신 버전으로 다시 키세요!"); KillProgram()
-    nv = requests.get("https://github.com/skchqhdpdy/osump3/raw/main/version.txt", headers=requestHeaders).text.split("\n")
+    nv = requests.get("https://github.com/skchqhdpdy/osump3/raw/main/version.txt", headers=requestHeaders, timeout=10).text.split("\n")
     if version != nv[0]:
         print(f"업데이트 있음! \n현재버전 : {version} \n최신버전 : {nv[0]}")
         print("https://github.com/skchqhdpdy/osump3")
@@ -66,13 +69,7 @@ except:
 if os.system(f"ffmpeg -version > {'nul' if os.name == 'nt' else '/dev/null'} 2>&1") != 0:
     #if not ctypes.windll.shell32.IsUserAnAdmin() != 0: input("ffmpeg 설치를 위해 관리자 권한으로 실행하세요!"); KillProgram()
     print("https://aodd.xyz/file%20hosting/Downloads/ffmpeg.zip --> C:\\Program Files\\ffmpeg osump3")
-    ff = requests.get("https://aodd.xyz/file%20hosting/Downloads/ffmpeg.zip", headers=requestHeaders, stream=True)
-    # tqdm을 사용하여 진행률 표시
-    with open("C:/Program Files/ffmpeg osump3.zip", 'wb') as file:
-        with tqdm(total=int(ff.headers.get('Content-Length', 0)), unit='B', unit_scale=True, unit_divisor=1024, ncols=60) as pbar:
-            for data in ff.iter_content(1024):
-                file.write(data)
-                pbar.update(len(data))
+    dl("https://aodd.xyz/file%20hosting/Downloads/ffmpeg.zip", "C:/Program Files/ffmpeg osump3.zip")
     zipfile.ZipFile("C:/Program Files/ffmpeg osump3.zip").extractall("C:/Program Files/ffmpeg osump3")
     os.remove(f"C:/Program Files/ffmpeg osump3.zip")
     print("Installed ffmpeg")
@@ -151,7 +148,13 @@ def rewind_song():
     print(f"    {uSel}")
     skip_song()
 
-def toggle_pause():
+def resume_song():
+    global songPause, songStatus
+    if songPause: pygame.mixer.music.unpause()
+    else: pygame.mixer.music.rewind()
+    songPause = False; songStatus = "Playing"
+
+def pause_song():
     global songPause, songStatus
     if songPause:
         pygame.mixer.music.unpause()
@@ -191,8 +194,8 @@ def on_press(key):
     global songPause
     try:
         if key == keyboard.Key.f1: rewind_song()
-        elif key == keyboard.Key.f2: toggle_pause() #resume
-        elif key == keyboard.Key.f3: toggle_pause() #pause
+        elif key == keyboard.Key.f2: resume_song() #resume
+        elif key == keyboard.Key.f3: pause_song() #pause
         elif key == keyboard.Key.f4: stop_song() #stop
         elif key == keyboard.Key.f5: skip_song() #skip
         elif key == keyboard.Key.f6: print(f"    {DRP_np()}") #np?
@@ -202,7 +205,7 @@ listener.start()
 
 #콘솔 입력 처리 함수
 def ccmd():
-    global vol, songPause, songStatus
+    global vol, songPause, songStatus, uSel
     while True:
         try:
             i = input("command : ")
@@ -210,16 +213,19 @@ def ccmd():
                 print("\n    help (h) || command list"); print(f"    status (stat) || Check Status"); print("    np (n) || Now Playing")
                 print("    vol (v) 1~100 || Volume Check/Setting"); print("    rewind (rew) || rewind song ('F1' Key same this)"); print("    resume (r) || resume song ('F2' Key same this)")
                 print("    pause (p) || pause song ('F3' Key same this)"); print("    F4"); print("    skip (s) || skip ('F5' Key same this)")
-                print("    s/{BeatmapSetID} || Play Song With BeatmapSetID"); print("    b/{BeatmapSetID} || Play Song With BeatmapID"); print("    cho (c) || Open Bancho Link")
-                print("    redstar (red) || Open Redstar Link"); print("    exit (kill, x) || exit this program"); print()
+                print("    s/{BeatmapSetID} || Play Song With BeatmapSetID"); print("    b/{BeatmapSetID} || Play Song With BeatmapID"); print("    search (search {text}) || Search From Your osu!Songs Path")
+                print("    cho (c) || Open Bancho Link"); print("    redstar (red) || Open Redstar Link"); print("    exit (kill, x) || exit this program")
+                print()
             elif i.lower() == "status" or i.lower() == "stat":
                 nt = time.time()
+                print(f"    pid : {os.getpid()} | ProcessName : {ProcessName} | ProcessPath : {ProcessPath} | version : {version} | version_hash : {version_hash}")
                 print(f"    {songStatus} | {rpcStatus} | {int((nt - st) // 3600):02}:{int(((nt - st) % 3600) // 60):02}:{int((nt - st) % 60):02} | ")
                 print(f"    현재버전 : {version} | 최신버전 : {nv[0]}")
                 print(f"    현재 Hash 값 : {version_hash} | 최신 Hash 값 : {nv[1]}")
+                print(f"    volume : {vol} | np : {np}")
             elif i.lower() == "np" or i.lower() == "n": print(f"    {DRP_np()}")
             elif i.lower() == "vol" or i.lower() == "v": print(f"    {vol}%")
-            elif i.startswith("vol") or i.startswith("v "):
+            elif i.lower().startswith("vol") or i.lower().startswith("v "):
                 try:
                     vol = int(i.split(" ")[1])
                     if not 0 <= vol <= 100: raise
@@ -227,8 +233,7 @@ def ccmd():
                     print(f"    Changed {vol}%")
                 except:
                     print("    Use That | vol 0~100")
-            elif i.startswith("s/") or i.startswith("b/"):
-                global uSel
+            elif i.lower().startswith("s/") or i.lower().startswith("b/"): #type(uSel) = str
                 id = None
                 try: id = int(i.replace('b/', ''))
                 except: pass
@@ -236,20 +241,27 @@ def ccmd():
                 except: pass
                 if not id: print(f"    Use That | s/534054 | b/3395864"); continue
                 if not os.path.isfile(f"{osu_path}/osump3/audio/{id}"):
-                    audio = requests.get(f"https://b.redstar.moe/audio/{id}", headers=requestHeaders)
-                    if audio.status_code == 200:
-                        if not os.path.isdir(f"{osu_path}/osump3/audio"): os.makedirs(f"{osu_path}/osump3/audio")
-                        with open(f"{osu_path}/osump3/audio/{id}", "wb") as f:
-                            f.write(audio.content)
-
+                    dl(f"https://b.redstar.moe/audio/{id}", f"{osu_path}/osump3/audio/{id}")
                 uSel = f"{osu_path}/osump3/audio/{id}"
                 print(f"    {uSel}")
                 skip_song()
+            elif i.lower() == "search" or i.lower().startswith("search "): #type(uSel) = dict
+                q = i.lower().replace("search ", "") if len(i.split(" ")) > 1 else input("    찾을 곡을 입력하세요! : ").lower()
+                if q:
+                    sni = 1; sn = []
+                    for bs in BeatmapSets:
+                        if q in bs.lower(): print(f"    {sni}. | {bs}"); sn.append(bs); sni += 1
+                    if sn:
+                        try:
+                            sn = sn[int(input("\n    재생할 곡의 번호를 입력하세요! : ")) - 1]
+                            uSel = {"sn": sn}
+                            skip_song()
+                        except: pass
             elif i.lower() == "cho" or i.lower() == "c": os.system(f"start https://osu.ppy.sh/b/{bid}") if type(bid) == int else print("    BeatmapID Not Found!")
             elif i.lower() == "redstar" or i.lower() == "red": os.system(f"start https://redstar.moe/b/{bid}") if type(bid) == int else print("    BeatmapID Not Found!")
-            elif i.lower() == "rewind" or i.lower() == "rew": rewind_song()
-            elif i.lower() == "resume" or i.lower() == "r": toggle_pause()
-            elif i.lower() == "pause" or i.lower() == "p": toggle_pause()
+            elif i.lower() == "rewind" or i.lower() == "rew": rewind_song() #type(uSel) = list
+            elif i.lower() == "resume" or i.lower() == "r": resume_song()
+            elif i.lower() == "pause" or i.lower() == "p": pause_song()
             elif i.lower() == "skip" or i.lower() == "s": skip_song()
             elif i.lower() == "exit" or i.lower() == "kill" or i.lower() == "x": KillProgram()
             elif i.lower() == "d": print(f"Debug | npList = {npList}") #debug
@@ -311,33 +323,33 @@ for i in os.listdir(f"{osu_path}/Songs"):
     if os.path.isdir(f"{osu_path}/Songs/{i}"): BeatmapSets.append(i)
 
 while True:
-    if uSel and type(uSel) is str:
+    if uSel and type(uSel) is str: #s/, b/
         id = uSel.split("/")
         id = id[-1]
         if "+" in id:
-            try: bid = int(requests.get(f"https://b.redstar.moe/filesinfo/{id.replace('+', '')}", headers=requestHeaders).json()["RedstarOSU"][1])
+            try: bid = int(requests.get(f"https://b.redstar.moe/filesinfo/{id.replace('+', '')}", headers=requestHeaders, timeout=10).json()["RedstarOSU"][1])
             except: bid = ""
         else: bid = int(id)
-        np = uSel; npList.append(f"{np}|{bid}")
+        np = uSel; npList.append(f"{np}|{bid}") #이거 써야되나?
         uSel = None
         mp3Play()
-    elif uSel and type(uSel) is list:
+    elif uSel and type(uSel) is list: #rew
         np, bid = uSel.pop(0).split("|")
         mp3Play()
     else:
-        Set = random.choice(BeatmapSets)
+        if uSel and type(uSel) is dict: Set = uSel["sn"]; uSel = None #search
+        else: Set = random.choice(BeatmapSets) #default
         Beatmap = [i for i in os.listdir(f"{osu_path}/Songs/{Set}") if i.endswith(".osu")]
         Beatmap = random.choice(Beatmap)
 
         #mp3 파일명 추출
         with open(f"{osu_path}/Songs/{Set}/{Beatmap}", 'r', encoding="utf-8") as f:
-            #### A:/osu!/Songs/beatmap-637515017600437735-Camellia - SECRET BOSS/audio.mp3 | 83/273 30.4% | Playing
             bmd5 = calculate_md5.file(f"{osu_path}/Songs/{Set}/{Beatmap}") 
             try:
-                bid = int(requests.get(f"https://cheesegull.redstar.moe/api/md5/{bmd5}", headers=requestHeaders).json()["BeatmapID"])
+                bid = int(requests.get(f"https://cheesegull.redstar.moe/api/md5/{bmd5}", headers=requestHeaders, timeout=10).json()["BeatmapID"])
             except:
                 print("    bid 못찾은 관계로 Firstbid 조회함...")
-                try: bid = int(requests.get(f"https://b.redstar.moe/filesinfo/{int(Set.split(' ')[0])}", headers=requestHeaders).json()["RedstarOSU"][1])
+                try: bid = int(requests.get(f"https://b.redstar.moe/filesinfo/{int(Set.split(' ')[0])}", headers=requestHeaders, timeout=10).json()["RedstarOSU"][1])
                 except: bid = ""; print("    bid 못찾음!")
 
             line = f.read()
