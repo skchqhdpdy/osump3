@@ -16,7 +16,7 @@ import asyncio
 import traceback
 import sys
 
-version = "2.3.3"
+version = "2.3.4"
 ProcessName = os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0]
 ProcessPath = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(sys.argv[0]) #환경 변수 세팅시에 경로가 cmd의 현재 경로로 설정되는 것 방지
 version_hash = calculate_md5.file(ProcessPath) if ProcessName != "python.exe" else ""
@@ -161,9 +161,9 @@ def pause_song():
         songPause = True; songStatus = "Paused"
 
 def skip_song():
-    global songStatus
+    global songPause, songStatus
     pygame.mixer.music.stop()
-    songStatus = "Skipped"
+    songPause = False; songStatus = "Skipped"
 
 def stop_song():
     global songPause, songStatus, jst
