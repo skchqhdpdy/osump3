@@ -16,7 +16,7 @@ import asyncio
 import traceback
 import sys
 
-version = "2.3.2"
+version = "2.3.3"
 ProcessName = os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0]
 ProcessPath = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(sys.argv[0]) #환경 변수 세팅시에 경로가 cmd의 현재 경로로 설정되는 것 방지
 version_hash = calculate_md5.file(ProcessPath) if ProcessName != "python.exe" else ""
@@ -25,9 +25,9 @@ pygame.init() #pygame 초기화
 pygame.mixer.init()
 np = bid = VolumeUniversal = VolumeMusic = uSel = rpc = ""
 npList = []
-songPause = False
+songPause = isLoop = False
 songStatus = "Stoped"; rpcStatus = "Discord Never Running"
-vol = 10
+vol = 10; jst = 0
 
 def exceptionE(): e = f"\n{traceback.format_exc()}"; print(e); return e
 def KillProgram(): os.system(f"taskkill /f /pid {os.getpid()}")
@@ -129,11 +129,11 @@ print(f"Default Volume : {vol} | (VolumeUniversal : {VolumeUniversal}, VolumeMus
 #play
 def mp3Play():
     def mp3Play2():
-        global songStatus
+        global songPause, songStatus, jst
         pygame.mixer.music.load(np)
         pygame.mixer.music.set_volume(vol / 100)
         pygame.mixer.music.play()
-        songStatus = "Playing"
+        songPause = False; songStatus = "Playing"; jst = 0
         while pygame.mixer.music.get_busy() or songPause: pygame.time.Clock().tick(10)
     music_thread = threading.Thread(target=mp3Play2)
     music_thread.start()
@@ -149,35 +149,37 @@ def rewind_song():
     skip_song()
 
 def resume_song():
-    global songPause, songStatus
+    global songPause, songStatus, jst
     if songPause: pygame.mixer.music.unpause()
-    else: pygame.mixer.music.rewind()
+    else: pygame.mixer.music.play(); jst = 0
     songPause = False; songStatus = "Playing"
 
 def pause_song():
     global songPause, songStatus
-    if songPause:
-        pygame.mixer.music.unpause()
-        songPause = False; songStatus = "Playing"
-    else:
+    if not songPause:
         pygame.mixer.music.pause()
         songPause = True; songStatus = "Paused"
 
 def skip_song():
-    global songPause
+    global songStatus
     pygame.mixer.music.stop()
-    songPause = False
+    songStatus = "Skipped"
 
 def stop_song():
-    global songPause, songStatus
+    global songPause, songStatus, jst
+    pygame.mixer.music.play()
     pygame.mixer.music.pause()
     pygame.mixer.music.rewind()
-    songPause = True
-    songStatus = "Stoped"
+    songPause = True; songStatus = "Stoped"; jst = 0
+
+def jump_song(t: int):
+    global jst
+    jst = t
+    pygame.mixer.music.play(start=jst)
 
 def song_process():
     #█
-    now = int(pygame.mixer.music.get_pos() / 1000)
+    now = int(pygame.mixer.music.get_pos() / 1000) if not jst else int(pygame.mixer.music.get_pos() / 1000) + jst
     length = int(float(mediainfo(np)["duration"]))
     percent = f"{round((now / length) * 100, 2)}%"
     return [now, length, percent] if now != -1 else [length, length, "100%"]
@@ -205,24 +207,25 @@ listener.start()
 
 #콘솔 입력 처리 함수
 def ccmd():
-    global vol, songPause, songStatus, uSel
+    global vol, songPause, songStatus, uSel, isLoop
     while True:
         try:
             i = input("command : ")
             if i.lower() == "help" or i.lower() == "h":
-                print("\n    help (h) || command list"); print(f"    status (stat) || Check Status"); print("    np (n) || Now Playing")
-                print("    vol (v) 1~100 || Volume Check/Setting"); print("    rewind (rew) || rewind song ('F1' Key same this)"); print("    resume (r) || resume song ('F2' Key same this)")
-                print("    pause (p) || pause song ('F3' Key same this)"); print("    F4"); print("    skip (s) || skip ('F5' Key same this)")
-                print("    s/{BeatmapSetID} || Play Song With BeatmapSetID"); print("    b/{BeatmapSetID} || Play Song With BeatmapID"); print("    search (search {text}) || Search From Your osu!Songs Path")
-                print("    cho (c) || Open Bancho Link"); print("    redstar (red) || Open Redstar Link"); print("    exit (kill, x) || exit this program")
-                print()
+                print("\n    help (h) || command list"); print(f"    status (stat) || Check Status"); print("    np (n) || Now Playing ('F6' Key same this)")
+                print("    vol (v) {1~100} || Volume Check/Setting"); print("    rewind (rew) || rewind song ('F1' Key same this)"); print("    resume (r) || resume song ('F2' Key same this)")
+                print("    pause (p) || pause song ('F3' Key same this)"); print("    stop (st) || stop song ('F4' Key same this)"); print("    skip (s) || skip ('F5' Key same this)")
+                print("    jump (j) {Second} || Go to the Sec you entered")
+                print("    s/{BeatmapSetID} || Play Song With BeatmapSetID"); print("    b/{BeatmapSetID} || Play Song With BeatmapID"); print("    search {Text} || Search From Your osu!Songs Path")
+                print("    loop (l) || Loop song For Now Playing"); print("    cho (c) || Open Bancho Link"); print("    redstar (red) || Open Redstar Link")
+                print("    exit (kill, x) || exit this program \n")
             elif i.lower() == "status" or i.lower() == "stat":
                 nt = time.time()
                 print(f"    pid : {os.getpid()} | ProcessName : {ProcessName} | ProcessPath : {ProcessPath} | version : {version} | version_hash : {version_hash}")
                 print(f"    {songStatus} | {rpcStatus} | {int((nt - st) // 3600):02}:{int(((nt - st) % 3600) // 60):02}:{int((nt - st) % 60):02} | ")
                 print(f"    현재버전 : {version} | 최신버전 : {nv[0]}")
                 print(f"    현재 Hash 값 : {version_hash} | 최신 Hash 값 : {nv[1]}")
-                print(f"    volume : {vol} | np : {np}")
+                print(f"    volume : {vol} | np : {np} | bid : {bid}")
             elif i.lower() == "np" or i.lower() == "n": print(f"    {DRP_np()}")
             elif i.lower() == "vol" or i.lower() == "v": print(f"    {vol}%")
             elif i.lower().startswith("vol") or i.lower().startswith("v "):
@@ -245,8 +248,8 @@ def ccmd():
                 uSel = f"{osu_path}/osump3/audio/{id}"
                 print(f"    {uSel}")
                 skip_song()
-            elif i.lower() == "search" or i.lower().startswith("search "): #type(uSel) = dict
-                q = i.lower().replace("search ", "") if len(i.split(" ")) > 1 else input("    찾을 곡을 입력하세요! : ").lower()
+            elif i.lower().startswith("search "): #type(uSel) = dict
+                q = i.lower().replace("search ", "")
                 if q:
                     sni = 1; sn = []
                     for bs in BeatmapSets:
@@ -257,12 +260,17 @@ def ccmd():
                             uSel = {"sn": sn}
                             skip_song()
                         except: pass
+            elif i.lower() == "loop" or i.lower() == "l": isLoop = not isLoop; print(f"    Loop = {isLoop} {f'| {np}' if isLoop else ''}")
             elif i.lower() == "cho" or i.lower() == "c": os.system(f"start https://osu.ppy.sh/b/{bid}") if type(bid) == int else print("    BeatmapID Not Found!")
             elif i.lower() == "redstar" or i.lower() == "red": os.system(f"start https://redstar.moe/b/{bid}") if type(bid) == int else print("    BeatmapID Not Found!")
             elif i.lower() == "rewind" or i.lower() == "rew": rewind_song() #type(uSel) = list
             elif i.lower() == "resume" or i.lower() == "r": resume_song()
             elif i.lower() == "pause" or i.lower() == "p": pause_song()
+            elif i.lower() == "stop" or i.lower() == "st": stop_song()
             elif i.lower() == "skip" or i.lower() == "s": skip_song()
+            elif i.lower().startswith("jump ") or i.lower().startswith("j "):
+                try: jump_song(int(i.split(" ")[1]))
+                except: print("    다시 입력하세요!")
             elif i.lower() == "exit" or i.lower() == "kill" or i.lower() == "x": KillProgram()
             elif i.lower() == "d": print(f"Debug | npList = {npList}") #debug
         except (KeyboardInterrupt, EOFError): print("Ctrl + C"); KillProgram()
@@ -323,7 +331,8 @@ for i in os.listdir(f"{osu_path}/Songs"):
     if os.path.isdir(f"{osu_path}/Songs/{i}"): BeatmapSets.append(i)
 
 while True:
-    if uSel and type(uSel) is str: #s/, b/
+    if isLoop: mp3Play()
+    elif uSel and type(uSel) is str: #s/, b/
         id = uSel.split("/")
         id = id[-1]
         if "+" in id:
@@ -344,7 +353,7 @@ while True:
 
         #mp3 파일명 추출
         with open(f"{osu_path}/Songs/{Set}/{Beatmap}", 'r', encoding="utf-8") as f:
-            bmd5 = calculate_md5.file(f"{osu_path}/Songs/{Set}/{Beatmap}") 
+            bmd5 = calculate_md5.file(f"{osu_path}/Songs/{Set}/{Beatmap}")
             try:
                 bid = int(requests.get(f"https://cheesegull.redstar.moe/api/md5/{bmd5}", headers=requestHeaders, timeout=10).json()["BeatmapID"])
             except:
