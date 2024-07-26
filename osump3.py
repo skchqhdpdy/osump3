@@ -10,13 +10,13 @@ from tqdm import tqdm
 from md5Check import calculate_md5
 import zipfile
 from pydub.utils import mediainfo
-import ctypes
 from pypresence import Presence, exceptions
 import asyncio
 import traceback
 import sys
 
-version = "2.3.4"
+Develop = False
+version = "2.3.5"
 ProcessName = os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0]
 ProcessPath = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(sys.argv[0]) #환경 변수 세팅시에 경로가 cmd의 현재 경로로 설정되는 것 방지
 version_hash = calculate_md5.file(ProcessPath) if ProcessName != "python.exe" else ""
@@ -32,7 +32,7 @@ vol = 10; jst = 0
 def exceptionE(): e = f"\n{traceback.format_exc()}"; print(e); return e
 def KillProgram(): os.system(f"taskkill /f /pid {os.getpid()}")
 
-if os.name != "nt": print("This Program Is Work Only Windows System!!"); KillProgram()
+if os.name != "nt": input("This Program Is Work Only Windows System!!"); KillProgram()
 
 def dl(link, Path):
     d = requests.get(link, headers=requestHeaders, stream=True, timeout=10)
@@ -51,16 +51,17 @@ try:
         #os.remove(f"{ProcessPath.replace('.exe', f'-v{version}.exe')}")
         input("\n신 버전으로 다시 키세요!"); KillProgram()
     nv = requests.get("https://github.com/skchqhdpdy/osump3/raw/main/version.txt", headers=requestHeaders, timeout=10).text.split("\n")
-    if version != nv[0]:
-        print(f"업데이트 있음! \n현재버전 : {version} \n최신버전 : {nv[0]}")
-        print("https://github.com/skchqhdpdy/osump3")
-        if input("Update Program? (y/n) : ") != "y": os.system("start https://github.com/skchqhdpdy/osump3") #KillProgram()
-        else: update_osump3()
-    elif ProcessName != "python.exe" and version_hash != nv[1]:
-        print(f"업데이트 있음! \n버전은 같지만 파일 Hash 값이 다름! \n현재 Hash 값 : {version_hash} \n최신 Hash 값 : {nv[1]}")
-        print("https://github.com/skchqhdpdy/osump3")
-        if input("Update Program? (y/n) : ") != "y": os.system("start https://github.com/skchqhdpdy/osump3") #KillProgram()
-        else: update_osump3()
+    if not Develop: #개발시에 업데이트 체크 무시
+        if version != nv[0]:
+            print(f"업데이트 있음! \n현재버전 : {version} \n최신버전 : {nv[0]}")
+            print("https://github.com/skchqhdpdy/osump3")
+            if input("Update Program? (y/n) : ") != "y": os.system("start https://github.com/skchqhdpdy/osump3") #KillProgram()
+            else: update_osump3()
+        elif ProcessName != "python.exe" and version_hash != nv[1]:
+            print(f"업데이트 있음! \n버전은 같지만 파일 Hash 값이 다름! \n현재 Hash 값 : {version_hash} \n최신 Hash 값 : {nv[1]}")
+            print("https://github.com/skchqhdpdy/osump3")
+            if input("Update Program? (y/n) : ") != "y": os.system("start https://github.com/skchqhdpdy/osump3") #KillProgram()
+            else: update_osump3()
 except:
     exceptionE()
     if input("version Check Fail! ignore? (y/n) : ") == "n": KillProgram()
@@ -225,7 +226,7 @@ def ccmd():
                 print(f"    {songStatus} | {rpcStatus} | {int((nt - st) // 3600):02}:{int(((nt - st) % 3600) // 60):02}:{int((nt - st) % 60):02} | ")
                 print(f"    현재버전 : {version} | 최신버전 : {nv[0]}")
                 print(f"    현재 Hash 값 : {version_hash} | 최신 Hash 값 : {nv[1]}")
-                print(f"    volume : {vol} | np : {np} | bid : {bid}")
+                print(f"    volume : {vol} | np : {np} | bid : {bid} | loop = {isLoop}")
             elif i.lower() == "np" or i.lower() == "n": print(f"    {DRP_np()}")
             elif i.lower() == "vol" or i.lower() == "v": print(f"    {vol}%")
             elif i.lower().startswith("vol") or i.lower().startswith("v "):
@@ -247,7 +248,7 @@ def ccmd():
                     dl(f"https://b.redstar.moe/audio/{id}", f"{osu_path}/osump3/audio/{id}")
                 uSel = f"{osu_path}/osump3/audio/{id}"
                 print(f"    {uSel}")
-                skip_song()
+                if int(input("    바로 재생 = 1, 바로 다음 대기열 = 2 : ")) == 1: skip_song()
             elif i.lower().startswith("search "): #type(uSel) = dict
                 q = i.lower().replace("search ", "")
                 if q:
@@ -258,7 +259,7 @@ def ccmd():
                         try:
                             sn = sn[int(input("\n    재생할 곡의 번호를 입력하세요! : ")) - 1]
                             uSel = {"sn": sn}
-                            skip_song()
+                            if int(input("    바로 재생 = 1, 바로 다음 대기열 = 2 : ")) == 1: skip_song()
                         except: pass
             elif i.lower() == "loop" or i.lower() == "l": isLoop = not isLoop; print(f"    Loop = {isLoop} {f'| {np}' if isLoop else ''}")
             elif i.lower() == "cho" or i.lower() == "c": os.system(f"start https://osu.ppy.sh/b/{bid}") if type(bid) == int else print("    BeatmapID Not Found!")
