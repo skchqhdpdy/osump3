@@ -15,8 +15,7 @@ import asyncio
 import traceback
 import sys
 
-Develop = False
-version = "2.3.5"
+version = "2.3.6"
 ProcessName = os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0]
 ProcessPath = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(sys.argv[0]) #환경 변수 세팅시에 경로가 cmd의 현재 경로로 설정되는 것 방지
 version_hash = calculate_md5.file(ProcessPath) if ProcessName != "python.exe" else ""
@@ -36,11 +35,14 @@ if os.name != "nt": input("This Program Is Work Only Windows System!!"); KillPro
 
 def dl(link, Path):
     d = requests.get(link, headers=requestHeaders, stream=True, timeout=10)
-    with open(Path, 'wb') as file:
-        with tqdm(total=int(d.headers.get('Content-Length', 0)), unit='B', unit_scale=True, unit_divisor=1024, ncols=60) as pbar:
-            for data in d.iter_content(1024):
-                file.write(data)
-                pbar.update(len(data))
+    if d.status_code == 200:
+        with open(Path, 'wb') as file:
+            with tqdm(total=int(d.headers.get('Content-Length', 0)), unit='B', unit_scale=True, unit_divisor=1024, ncols=60) as pbar:
+                for data in d.iter_content(1024):
+                    file.write(data)
+                    pbar.update(len(data))
+    else: print(f"    Error! | status_code = {d.status_code} | {link}")
+    return d
 
 try:
     print(f"\npid : {os.getpid()} | ProcessName : {ProcessName} | ProcessPath : {ProcessPath} | version : {version} | version_hash : {version_hash}")
@@ -51,7 +53,7 @@ try:
         #os.remove(f"{ProcessPath.replace('.exe', f'-v{version}.exe')}")
         input("\n신 버전으로 다시 키세요!"); KillProgram()
     nv = requests.get("https://github.com/skchqhdpdy/osump3/raw/main/version.txt", headers=requestHeaders, timeout=10).text.split("\n")
-    if not Develop: #개발시에 업데이트 체크 무시
+    if ProcessName != "python.exe": #개발시에 업데이트 체크 무시
         if version != nv[0]:
             print(f"업데이트 있음! \n현재버전 : {version} \n최신버전 : {nv[0]}")
             print("https://github.com/skchqhdpdy/osump3")
@@ -219,6 +221,7 @@ def ccmd():
                 print("    jump (j) {Second} || Go to the Sec you entered")
                 print("    s/{BeatmapSetID} || Play Song With BeatmapSetID"); print("    b/{BeatmapSetID} || Play Song With BeatmapID"); print("    search {Text} || Search From Your osu!Songs Path")
                 print("    loop (l) || Loop song For Now Playing"); print("    cho (c) || Open Bancho Link"); print("    redstar (red) || Open Redstar Link")
+                print(f'    openfolder (of) || Open BeatmapSet Folder for Now Playing | "{os.path.join(*np.split("/")[:-1])}"'); print(f"    restart (rs) || Restart This Program"); print(f"    remove (rm) || Remove '{osu_path}/osump3' Folder")
                 print("    exit (kill, x) || exit this program \n")
             elif i.lower() == "status" or i.lower() == "stat":
                 nt = time.time()
@@ -245,7 +248,7 @@ def ccmd():
                 except: pass
                 if not id: print(f"    Use That | s/534054 | b/3395864"); continue
                 if not os.path.isfile(f"{osu_path}/osump3/audio/{id}"):
-                    dl(f"https://b.redstar.moe/audio/{id}", f"{osu_path}/osump3/audio/{id}")
+                    if dl(f"https://b.redstar.moe/audio/{id}", f"{osu_path}/osump3/audio/{id}").status_code != 200: continue
                 uSel = f"{osu_path}/osump3/audio/{id}"
                 print(f"    {uSel}")
                 if int(input("    바로 재생 = 1, 바로 다음 대기열 = 2 : ")) == 1: skip_song()
@@ -272,6 +275,15 @@ def ccmd():
             elif i.lower().startswith("jump ") or i.lower().startswith("j "):
                 try: jump_song(int(i.split(" ")[1]))
                 except: print("    다시 입력하세요!")
+            elif i.lower() == "openfolder" or i.lower() == "of": os.system(f'start "" "{os.path.join(*np.split("/")[:-1])}"')
+            elif i.lower() == "restart" or i.lower() == "rs":
+                if ProcessName != "python.exe": os.execv(sys.executable, [sys.executable] + sys.argv)
+                else: print("    .py 파일은 restart가 금지되어 있습니다! | .exe 파일에서만 작동합니다!")
+            elif i.lower() == "remove" or i.lower() == "rm": 
+                if input(f'    진짜로 "{osu_path}/osump3" 폴더를 삭제 하시겠습니까? (y/n) : ').lower() == "y":
+                    os.system(f'rd /s /q "{osu_path}/osump3"')
+                    print("    삭제완료!") if not os.path.isdir(f"{osu_path}/osump3") else print("    Error! | 여전히 폴더가 존재함!")
+                else: print("    취소")
             elif i.lower() == "exit" or i.lower() == "kill" or i.lower() == "x": KillProgram()
             elif i.lower() == "d": print(f"Debug | npList = {npList}") #debug
         except (KeyboardInterrupt, EOFError): print("Ctrl + C"); KillProgram()
