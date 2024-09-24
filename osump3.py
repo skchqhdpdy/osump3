@@ -15,8 +15,11 @@ import asyncio
 import traceback
 import sys
 from pathToContentType import pathToContentType
+from pydub import AudioSegment
+import simpleaudio as sa
+import math
 
-version = "2.3.7"
+version = "2.3.8"
 ProcessName = os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0]
 ProcessPath = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(sys.argv[0]) #환경 변수 세팅시에 경로가 cmd의 현재 경로로 설정되는 것 방지
 version_hash = calculate_md5.file(ProcessPath) if ProcessName != "python.exe" else ""
@@ -24,7 +27,7 @@ requestHeaders = {"User-Agent": "osump3"}
 pygame.init() #pygame 초기화
 pygame.mixer.init()
 np = bid = VolumeUniversal = VolumeMusic = uSel = rpc = ""
-npList = []
+npList = BeatmapSets = []
 songPause = isLoop = False
 songStatus = "Stoped"; rpcStatus = "Discord Never Running"
 vol = 10; jst = 0
@@ -44,6 +47,49 @@ def dl(link, Path):
                     pbar.update(len(data))
     else: print(f"    Error! | status_code = {d.status_code} | {link}")
     return d
+
+def per2dB(volume): return 20 * math.log10(volume / 100)
+
+def osu_file_read(songname):
+    Beatmap = random.choice([i for i in os.listdir(f"{osu_path}/Songs/{songname}") if i.endswith(".osu")])
+    with open(f"{osu_path}/Songs/{songname}/{Beatmap}", 'r', encoding="utf-8") as f:
+        line = f.read()
+        line = line[line.find("AudioFilename:"):]
+        try:
+            AudioFilename = line.split("\n")[:4][0].replace("AudioFilename:", "")
+            AudioFilename = AudioFilename.replace(" ", "", 1) if AudioFilename.startswith(" ") else AudioFilename
+            if AudioFilename == "virtual": raise #실재 mp3 파일이 없는 매니아 에서 자주 쓰는 방법
+        except: AudioFilename = None
+
+        line = line[line.find("PreviewTime:"):]
+        try:
+            PreviewTime = line.split("\n")[:4][0].replace("PreviewTime:", "")
+            PreviewTime = int(PreviewTime.replace(" ", "", 1) if PreviewTime.startswith(" ") else PreviewTime)
+        except: PreviewTime = None
+
+        bmd5 = calculate_md5.file(f"{osu_path}/Songs/{songname}/{Beatmap}")
+        try: BeatmapID = int(requests.get(f"https://cheesegull.redstar.moe/api/md5/{bmd5}", headers=requestHeaders, timeout=10).json()["BeatmapID"])
+        except:
+            print("    md5 --> BeatmapID 못찾은 관계로 Firstbid 조회함...")
+            try: BeatmapID = int(requests.get(f"https://b.redstar.moe/filesinfo/{int(songname.split(' ')[0])}", headers=requestHeaders, timeout=10).json()["RedstarOSU"][1])
+            except:
+                print("    filesinfo --> BeatmapID 못찾음!")
+                line = line[line.find("BeatmapID:"):]
+                try:
+                    BeatmapID = line.split("\n")[:4][0].replace("BeatmapID:", "")
+                    BeatmapID = int(BeatmapID.replace(" ", "", 1) if BeatmapID.startswith(" ") else BeatmapID)
+                except: BeatmapID = ""; print(f"    {Beatmap} --> BeatmapID 못찾음!")
+
+        line = line[line.find("//Background and Video events"):]
+        try:
+            BeatmapVideo = BeatmapBG = None
+            lineSpilted = line.split("\n")[:4]
+            for p in lineSpilted:
+                t = pathToContentType(p, isInclude=True)
+                if t["type"] == "video": BeatmapVideo = p[p.find('"') + 1 : p.find('"', p.find('"') + 1)]
+                elif t["type"] == "image": BeatmapBG = p[p.find('"') + 1 : p.find('"', p.find('"') + 1)]
+        except: BeatmapBG = BeatmapVideo = None
+        return AudioFilename, PreviewTime, BeatmapID, BeatmapBG, BeatmapVideo
 
 try:
     print(f"\npid : {os.getpid()} | ProcessName : {ProcessName} | ProcessPath : {ProcessPath} | version : {version} | version_hash : {version_hash}")
@@ -222,8 +268,8 @@ def ccmd():
                 print("    jump (j) {Second} || Go to the Sec you entered")
                 print("    s/{BeatmapSetID} || Play Song With BeatmapSetID"); print("    b/{BeatmapSetID} || Play Song With BeatmapID"); print("    search {Text} || Search From Your osu!Songs Path")
                 print("    loop (l) || Loop song For Now Playing"); print("    cho (c) || Open Bancho Link"); print("    redstar (red) || Open Redstar Link")
-                print(f'    openfolder (of) || Open BeatmapSet Folder for Now Playing | "{npDir}"'); print(f'    bg || Open Background Image in BeatmapSet Folder for Now playing | "{npDir}/{BeatmapBG}"'); print(f"    restart (rs) || Restart This Program")
-                print(f"    remove (rm) || Remove '{osu_path}/osump3' Folder")
+                print(f'    openfolder (of) || Open BeatmapSet Folder for Now Playing | "{npDir}"'); print(f'    bg || Open Background Image in BeatmapSet Folder for Now playing | "{npDir}/{BeatmapBG}"'); print(f'    video (vi) || Open Background Video in BeatmapSet Folder for Now playing | "{npDir}/{BeatmapVideo}"')
+                print(f"    restart (rs) || Restart This Program"); print(f"    remove (rm) || Remove '{osu_path}/osump3' Folder")
                 print("    exit (kill, x) || exit this program \n")
             elif i.lower() == "status" or i.lower() == "stat":
                 nt = time.time()
@@ -240,14 +286,12 @@ def ccmd():
                     if not 0 <= vol <= 100: raise
                     pygame.mixer.music.set_volume(vol / 100)
                     print(f"    Changed {vol}%")
-                except:
-                    print("    Use That | vol 0~100")
+                except: print("    Use That | vol 0~100")
             elif i.lower().startswith("s/") or i.lower().startswith("b/"): #type(uSel) = str
-                id = None
                 try: id = int(i.replace('b/', ''))
-                except: pass
+                except: id = None
                 try: id = f"+{int(i.replace('s/', ''))}"
-                except: pass
+                except: id = None
                 if not id: print(f"    Use That | s/534054 | b/3395864"); continue
                 if not os.path.isfile(f"{osu_path}/osump3/audio/{id}"):
                     if dl(f"https://b.redstar.moe/audio/{id}", f"{osu_path}/osump3/audio/{id}").status_code != 200: continue
@@ -263,43 +307,35 @@ def ccmd():
                     if sn:
                         try:
                             sn = sn[int(input("\n    재생할 곡의 번호를 입력하세요! : ")) - 1]
-                            uSel = {"sn": sn}
-                            option = int(input("    바로 재생 = 1, 바로 다음 대기열 = 2, 미리듣기 = 3, 비트맵 이미지 보기 = 4 : "))
-                            if option == 1: skip_song()
-                            elif option == 2: pass
+                            option = int(input("    바로 재생 = 1, 바로 다음 대기열 = 2, 미리듣기 = 3, 이미지 보기 = 4, 동영상 보기 = 5 : "))
+                            AudioFilename_search, PreviewTime_search, BeatmapID_search, BeatmapBG_search, BeatmapVideo_search = osu_file_read(sn) if option != 1 and option != 2 else (None, None, None, None, None)
+                            if option == 1: uSel = {"sn": sn}; skip_song()
+                            elif option == 2: uSel = {"sn": sn}
                             elif option == 3:
-                                isPreviewStop = False
-
                                 pause_song()
-                                def mp3Play_preview():
-                                    pygame_pre = pygame; pygame_pre.init(); pygame_pre.mixer.init();
-                                    global songPause, songStatus
-
-                                    bmap = random.choice([i for i in os.listdir(f"{osu_path}/Songs/{sn}") if i.endswith(".osu")])
-                                    with open(f"{osu_path}/Songs/{sn}/{bmap}", 'r', encoding="utf-8") as f:
-                                        line = f.read()
-                                        line = line[line.find("AudioFilename:"):]
-                                        try:
-                                            AudioFilename = line.split("\n")[:4][0].replace("AudioFilename:", "")
-                                            AudioFilename = AudioFilename.replace(" ", "", 1) if AudioFilename.startswith(" ") else AudioFilename
-                                            if AudioFilename == "virtual": AudioFilename = None
-                                        except: AudioFilename = None
-
-                                    pygame_pre.mixer.music.load(f"{osu_path}/Songs/{sn}/{AudioFilename}")
-                                    pygame_pre.mixer.music.set_volume(vol / 100)
-                                    pygame_pre.mixer.music.play(start=PreviewTime / 1000)
-                                    songPause = False; songStatus = "Preview"; 
-
+                                def preview(): #다른 모듈 사용
+                                    sound = AudioSegment.from_file(f"{osu_path}/Songs/{sn}/{AudioFilename_search}")
+                                    sound = sound.apply_gain(per2dB(vol))
+                                    sound = sound[PreviewTime_search:PreviewTime_search + 30000]
+                                    play_obj = sa.play_buffer(sound.raw_data, num_channels=sound.channels,
+                                        bytes_per_sample=sound.sample_width,
+                                        sample_rate=sound.frame_rate)
+                                    #print((PreviewTime_search, vol, per2dB(vol), sound.dBFS))
+                                    stop_event = threading.Event()  # Stop event 생성
+                                    def get_input():
+                                        while not stop_event.is_set():
+                                            if input() == "1": stop_event.set(); break
+                                    threading.Thread(target=get_input).start()
                                     for i in range(30):
-                                        i += 1
-                                        if isPreviewStop: pygame_pre.mixer.music.stop(); break
+                                        if not play_obj.is_playing() or stop_event.is_set(): play_obj.stop(); break
+                                        print(f"\r({i+1}) | 미리듣기 종료 = 1 : ", end="")
                                         time.sleep(1)
-                                preview_thread = threading.Thread(target=mp3Play_preview)
-                                preview_thread.start()
-
-                                while not isPreviewStop: print(isPreviewStop); isPreviewStop = int(input("    미리듣기 종료 = 1 : "))
+                                    stop_event.set()
+                                pr_thread = threading.Thread(target=preview)
+                                pr_thread.start(); pr_thread.join()
                                 resume_song()
-                            elif option == 4: os.system(f'start "" "{npDir}/{BeatmapBG}"')
+                            elif option == 4: os.system(f'start "" "{osu_path}/Songs/{sn}/{BeatmapBG_search}"')
+                            elif option == 5: os.system(f'start "" "{osu_path}/Songs/{sn}/{BeatmapVideo_search}"')
                         except: pass
             elif i.lower() == "loop" or i.lower() == "l": isLoop = not isLoop; print(f"    Loop = {isLoop} {f'| {np}' if isLoop else ''}")
             elif i.lower() == "cho" or i.lower() == "c": os.system(f"start https://osu.ppy.sh/b/{bid}") if type(bid) == int else print("    BeatmapID Not Found!")
@@ -314,6 +350,7 @@ def ccmd():
                 except: print("    다시 입력하세요!")
             elif i.lower() == "openfolder" or i.lower() == "of": os.system(f'start "" "{npDir}"')
             elif i.lower() == "bg": os.system(f'start "" "{npDir}/{BeatmapBG}"')
+            elif i.lower() == "video" or i.lower() == "vi": os.system(f'start "" "{npDir}/{BeatmapVideo}"')
             elif i.lower() == "restart" or i.lower() == "rs":
                 if ProcessName != "python.exe": os.execv(sys.executable, [sys.executable] + sys.argv)
                 else: print("    .py 파일은 restart가 금지되어 있습니다! | .exe 파일에서만 작동합니다!")
@@ -377,11 +414,8 @@ def DiscordRichPresence():
 DRP = threading.Thread(target=DiscordRichPresence)
 DRP.start()
 
-BeatmapSets = []
-for i in os.listdir(f"{osu_path}/Songs"):
-    if os.path.isdir(f"{osu_path}/Songs/{i}"): BeatmapSets.append(i)
-
 while True:
+    BeatmapSets = [i for i in os.listdir(f"{osu_path}/Songs") if os.path.isdir(f"{osu_path}/Songs/{i}")]
     if isLoop: mp3Play()
     elif uSel and type(uSel) is str: #s/, b/
         id = uSel.split("/")
@@ -399,41 +433,9 @@ while True:
     else:
         if uSel and type(uSel) is dict: Set = uSel["sn"]; uSel = None #search
         else: Set = random.choice(BeatmapSets) #default
-        Beatmap = [i for i in os.listdir(f"{osu_path}/Songs/{Set}") if i.endswith(".osu")]
-        Beatmap = random.choice(Beatmap)
 
         #mp3 파일명 추출
-        with open(f"{osu_path}/Songs/{Set}/{Beatmap}", 'r', encoding="utf-8") as f:
-            bmd5 = calculate_md5.file(f"{osu_path}/Songs/{Set}/{Beatmap}")
-            try: bid = int(requests.get(f"https://cheesegull.redstar.moe/api/md5/{bmd5}", headers=requestHeaders, timeout=10).json()["BeatmapID"])
-            except:
-                print("    bid 못찾은 관계로 Firstbid 조회함...")
-                try: bid = int(requests.get(f"https://b.redstar.moe/filesinfo/{int(Set.split(' ')[0])}", headers=requestHeaders, timeout=10).json()["RedstarOSU"][1])
-                except: bid = ""; print("    bid 못찾음!")
-
-            line = f.read()
-            line = line[line.find("AudioFilename:"):]
-            try:
-                AudioFilename = line.split("\n")[:4][0].replace("AudioFilename:", "")
-                AudioFilename = AudioFilename.replace(" ", "", 1) if AudioFilename.startswith(" ") else AudioFilename
-                if AudioFilename == "virtual": continue #실재 mp3 파일이 없는 매니아 에서 자주 쓰는 방법
-            except: AudioFilename = None
-
-            line = line[line.find("PreviewTime:"):]
-            try:
-                PreviewTime = line.split("\n")[:4][0].replace("PreviewTime:", "")
-                PreviewTime = int(PreviewTime.replace(" ", "", 1) if PreviewTime.startswith(" ") else PreviewTime)
-            except: PreviewTime = None
-
-            line = line[line.find("//Background and Video events"):]
-            try:
-                BeatmapVideo = BeatmapBG = None
-                lineSpilted = line.split("\n")[:4]
-                for p in lineSpilted:
-                    t = pathToContentType(p, isInclude=True)
-                    if t["type"] == "video": BeatmapVideo = p[p.find('"') + 1 : p.find('"', p.find('"') + 1)]
-                    elif t["type"] == "image": BeatmapBG = p[p.find('"') + 1 : p.find('"', p.find('"') + 1)]
-            except: BeatmapBG = BeatmapVideo = None
+        AudioFilename, PreviewTime, BeatmapID, BeatmapBG, BeatmapVideo = osu_file_read(Set)
 
         npDir = f"{osu_path}/Songs/{Set}"
         np = f"{npDir}/{AudioFilename}"; npList.append(f"{np}|{bid}")
