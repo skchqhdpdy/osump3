@@ -14,8 +14,9 @@ from pypresence import Presence, exceptions
 import asyncio
 import traceback
 import sys
+from pathToContentType import pathToContentType
 
-version = "2.3.6"
+version = "2.3.7"
 ProcessName = os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0]
 ProcessPath = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(sys.argv[0]) #환경 변수 세팅시에 경로가 cmd의 현재 경로로 설정되는 것 방지
 version_hash = calculate_md5.file(ProcessPath) if ProcessName != "python.exe" else ""
@@ -116,7 +117,7 @@ def getOsupath():
         exceptionE()
         return None
 osu_path = getOsupath()
-if not osu_path: osu_path = input("Error! Not Found osu! Path! \nInput osu! Root Folder Path : ").replace("\\", "/") + "/"
+if not osu_path: osu_path = input("Error! Not Found osu! Path! \nInput FULL osu! Root Folder Path : ").replace("\\", "/")
 
 cfg = [i for i in os.listdir(osu_path) if i.endswith(".cfg")]
 cfg = f"{osu_path}/osu!.{os.environ.get('USERNAME')}.cfg" if f"osu!.{os.environ.get('USERNAME')}.cfg" in cfg else None
@@ -221,7 +222,8 @@ def ccmd():
                 print("    jump (j) {Second} || Go to the Sec you entered")
                 print("    s/{BeatmapSetID} || Play Song With BeatmapSetID"); print("    b/{BeatmapSetID} || Play Song With BeatmapID"); print("    search {Text} || Search From Your osu!Songs Path")
                 print("    loop (l) || Loop song For Now Playing"); print("    cho (c) || Open Bancho Link"); print("    redstar (red) || Open Redstar Link")
-                print(f'    openfolder (of) || Open BeatmapSet Folder for Now Playing | "{os.path.join(*np.split("/")[:-1])}"'); print(f"    restart (rs) || Restart This Program"); print(f"    remove (rm) || Remove '{osu_path}/osump3' Folder")
+                print(f'    openfolder (of) || Open BeatmapSet Folder for Now Playing | "{npDir}"'); print(f'    bg || Open Background Image in BeatmapSet Folder for Now playing | "{npDir}/{BeatmapBG}"'); print(f"    restart (rs) || Restart This Program")
+                print(f"    remove (rm) || Remove '{osu_path}/osump3' Folder")
                 print("    exit (kill, x) || exit this program \n")
             elif i.lower() == "status" or i.lower() == "stat":
                 nt = time.time()
@@ -262,7 +264,10 @@ def ccmd():
                         try:
                             sn = sn[int(input("\n    재생할 곡의 번호를 입력하세요! : ")) - 1]
                             uSel = {"sn": sn}
-                            if int(input("    바로 재생 = 1, 바로 다음 대기열 = 2 : ")) == 1: skip_song()
+                            option = int(input("    바로 재생 = 1, 바로 다음 대기열 = 2, 비트맵 이미지 보기 = 3 : "))
+                            if option == 1: skip_song()
+                            elif option == 2: pass
+                            elif option == 3: os.system(f'start "" "{npDir}/{BeatmapBG}"')
                         except: pass
             elif i.lower() == "loop" or i.lower() == "l": isLoop = not isLoop; print(f"    Loop = {isLoop} {f'| {np}' if isLoop else ''}")
             elif i.lower() == "cho" or i.lower() == "c": os.system(f"start https://osu.ppy.sh/b/{bid}") if type(bid) == int else print("    BeatmapID Not Found!")
@@ -275,7 +280,8 @@ def ccmd():
             elif i.lower().startswith("jump ") or i.lower().startswith("j "):
                 try: jump_song(int(i.split(" ")[1]))
                 except: print("    다시 입력하세요!")
-            elif i.lower() == "openfolder" or i.lower() == "of": os.system(f'start "" "{os.path.join(*np.split("/")[:-1])}"')
+            elif i.lower() == "openfolder" or i.lower() == "of": os.system(f'start "" "{npDir}"')
+            elif i.lower() == "bg": os.system(f'start "" "{npDir}/{BeatmapBG}"')
             elif i.lower() == "restart" or i.lower() == "rs":
                 if ProcessName != "python.exe": os.execv(sys.executable, [sys.executable] + sys.argv)
                 else: print("    .py 파일은 restart가 금지되어 있습니다! | .exe 파일에서만 작동합니다!")
@@ -319,8 +325,8 @@ def rpcUpdate(details):
         small_image="https://github.com/skchqhdpdy/osump3/raw/main/icon.jpg",
         small_text="https://github.com/skchqhdpdy/osump3",
         buttons=[
-            {"label": "Bancho", "url": f"https://osu.ppy.sh/b/{bid}"},
-            {"label": "Redstar", "url": f"https://redstar.moe/b/{bid}"}
+            {"label": "Redstar", "url": f"https://redstar.moe/b/{bid}"},
+            {"label": "Bancho", "url": f"https://osu.ppy.sh/b/{bid}"}
         ]
     )
 def DiscordRichPresence():
@@ -367,8 +373,7 @@ while True:
         #mp3 파일명 추출
         with open(f"{osu_path}/Songs/{Set}/{Beatmap}", 'r', encoding="utf-8") as f:
             bmd5 = calculate_md5.file(f"{osu_path}/Songs/{Set}/{Beatmap}")
-            try:
-                bid = int(requests.get(f"https://cheesegull.redstar.moe/api/md5/{bmd5}", headers=requestHeaders, timeout=10).json()["BeatmapID"])
+            try: bid = int(requests.get(f"https://cheesegull.redstar.moe/api/md5/{bmd5}", headers=requestHeaders, timeout=10).json()["BeatmapID"])
             except:
                 print("    bid 못찾은 관계로 Firstbid 조회함...")
                 try: bid = int(requests.get(f"https://b.redstar.moe/filesinfo/{int(Set.split(' ')[0])}", headers=requestHeaders, timeout=10).json()["RedstarOSU"][1])
@@ -380,8 +385,18 @@ while True:
                 AudioFilename = line.split("\n")[:4][0].replace("AudioFilename:", "")
                 AudioFilename = AudioFilename.replace(" ", "", 1) if AudioFilename.startswith(" ") else AudioFilename
                 if AudioFilename == "virtual": continue #실재 mp3 파일이 없는 매니아 에서 자주 쓰는 방법
-            except:
-                AudioFilename = None
+            except: AudioFilename = None
 
-        np = f"{osu_path}/Songs/{Set}/{AudioFilename}"; npList.append(f"{np}|{bid}")
+            line = line[line.find("//Background and Video events"):]
+            try:
+                BeatmapVideo = BeatmapBG = None
+                lineSpilted = line.split("\n")[:4]
+                for p in lineSpilted:
+                    t = pathToContentType(p, isInclude=True)
+                    if t["type"] == "video": BeatmapVideo = p[p.find('"') + 1 : p.find('"', p.find('"') + 1)]
+                    elif t["type"] == "image": BeatmapBG = p[p.find('"') + 1 : p.find('"', p.find('"') + 1)]
+            except: BeatmapBG = BeatmapVideo = None
+
+        npDir = f"{osu_path}/Songs/{Set}"
+        np = f"{npDir}/{AudioFilename}"; npList.append(f"{np}|{bid}")
         mp3Play()
