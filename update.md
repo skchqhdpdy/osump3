@@ -6,4 +6,5 @@
 - Update (v2.3.6) : bux fix, restart (rs) remove (rm) openfolder (of) 명령어 추가, Develop 변수 제거
 - Update (v2.3.7) : bg 명령어 추가, search 에 bg 보는 옵션 추가, BeatmapVideo BeatmapBG 변수 추가, pathToContentType.py 파일 추가, requirements.txt 수정, update.md 추가
 - Update (v2.3.8) : video (vi) 명령어 추가, search에 미리듣기 video 옵션 추가 (재생은 다른 모듈 사용함), simpleaudio==1.0.4 추가
+- Update (v2.3.8) : 변수 이름 변경 (에러 수정)
 ---

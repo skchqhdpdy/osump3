@@ -19,7 +19,7 @@ from pydub import AudioSegment
 import simpleaudio as sa
 import math
 
-version = "2.3.8"
+version = "2.3.9"
 ProcessName = os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0]
 ProcessPath = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(sys.argv[0]) #환경 변수 세팅시에 경로가 cmd의 현재 경로로 설정되는 것 방지
 version_hash = calculate_md5.file(ProcessPath) if ProcessName != "python.exe" else ""
@@ -435,7 +435,7 @@ while True:
         else: Set = random.choice(BeatmapSets) #default
 
         #mp3 파일명 추출
-        AudioFilename, PreviewTime, BeatmapID, BeatmapBG, BeatmapVideo = osu_file_read(Set)
+        AudioFilename, PreviewTime, bid, BeatmapBG, BeatmapVideo = osu_file_read(Set)
 
         npDir = f"{osu_path}/Songs/{Set}"
         np = f"{npDir}/{AudioFilename}"; npList.append(f"{np}|{bid}")
