@@ -264,10 +264,42 @@ def ccmd():
                         try:
                             sn = sn[int(input("\n    재생할 곡의 번호를 입력하세요! : ")) - 1]
                             uSel = {"sn": sn}
-                            option = int(input("    바로 재생 = 1, 바로 다음 대기열 = 2, 비트맵 이미지 보기 = 3 : "))
+                            option = int(input("    바로 재생 = 1, 바로 다음 대기열 = 2, 미리듣기 = 3, 비트맵 이미지 보기 = 4 : "))
                             if option == 1: skip_song()
                             elif option == 2: pass
-                            elif option == 3: os.system(f'start "" "{npDir}/{BeatmapBG}"')
+                            elif option == 3:
+                                isPreviewStop = False
+
+                                pause_song()
+                                def mp3Play_preview():
+                                    pygame_pre = pygame; pygame_pre.init(); pygame_pre.mixer.init();
+                                    global songPause, songStatus
+
+                                    bmap = random.choice([i for i in os.listdir(f"{osu_path}/Songs/{sn}") if i.endswith(".osu")])
+                                    with open(f"{osu_path}/Songs/{sn}/{bmap}", 'r', encoding="utf-8") as f:
+                                        line = f.read()
+                                        line = line[line.find("AudioFilename:"):]
+                                        try:
+                                            AudioFilename = line.split("\n")[:4][0].replace("AudioFilename:", "")
+                                            AudioFilename = AudioFilename.replace(" ", "", 1) if AudioFilename.startswith(" ") else AudioFilename
+                                            if AudioFilename == "virtual": AudioFilename = None
+                                        except: AudioFilename = None
+
+                                    pygame_pre.mixer.music.load(f"{osu_path}/Songs/{sn}/{AudioFilename}")
+                                    pygame_pre.mixer.music.set_volume(vol / 100)
+                                    pygame_pre.mixer.music.play(start=PreviewTime / 1000)
+                                    songPause = False; songStatus = "Preview"; 
+
+                                    for i in range(30):
+                                        i += 1
+                                        if isPreviewStop: pygame_pre.mixer.music.stop(); break
+                                        time.sleep(1)
+                                preview_thread = threading.Thread(target=mp3Play_preview)
+                                preview_thread.start()
+
+                                while not isPreviewStop: print(isPreviewStop); isPreviewStop = int(input("    미리듣기 종료 = 1 : "))
+                                resume_song()
+                            elif option == 4: os.system(f'start "" "{npDir}/{BeatmapBG}"')
                         except: pass
             elif i.lower() == "loop" or i.lower() == "l": isLoop = not isLoop; print(f"    Loop = {isLoop} {f'| {np}' if isLoop else ''}")
             elif i.lower() == "cho" or i.lower() == "c": os.system(f"start https://osu.ppy.sh/b/{bid}") if type(bid) == int else print("    BeatmapID Not Found!")
@@ -386,6 +418,12 @@ while True:
                 AudioFilename = AudioFilename.replace(" ", "", 1) if AudioFilename.startswith(" ") else AudioFilename
                 if AudioFilename == "virtual": continue #실재 mp3 파일이 없는 매니아 에서 자주 쓰는 방법
             except: AudioFilename = None
+
+            line = line[line.find("PreviewTime:"):]
+            try:
+                PreviewTime = line.split("\n")[:4][0].replace("PreviewTime:", "")
+                PreviewTime = int(PreviewTime.replace(" ", "", 1) if PreviewTime.startswith(" ") else PreviewTime)
+            except: PreviewTime = None
 
             line = line[line.find("//Background and Video events"):]
             try:
