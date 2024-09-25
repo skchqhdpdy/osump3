@@ -99,7 +99,7 @@ try:
     def update_osump3(): #자동 업데이트
         os.rename(ProcessPath, f"{ProcessPath.replace('osump3.exe', f'osump3-v{version}.exe')}")
         dl("https://github.com/skchqhdpdy/osump3/raw/main/osump3.exe", ProcessPath)
-        #os.remove(f"{ProcessPath.replace('.exe', f'-v{version}.exe')}")
+        os.remove(f"{ProcessPath.replace('.exe', f'-v{version}.exe')}")
         input("\n신 버전으로 다시 키세요!"); KillProgram()
     nv = requests.get("https://github.com/skchqhdpdy/osump3/raw/main/version.txt", headers=requestHeaders, timeout=10).text.split("\n")
     if ProcessName != "python.exe": #개발시에 업데이트 체크 무시
