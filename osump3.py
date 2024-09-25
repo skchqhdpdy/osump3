@@ -18,8 +18,10 @@ from pathToContentType import pathToContentType
 from pydub import AudioSegment
 import simpleaudio as sa
 import math
+import tkinter as tk
+from tkinter import filedialog
 
-version = "2.3.9"
+version = "2.3.10"
 ProcessName = os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0]
 ProcessPath = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(sys.argv[0]) #환경 변수 세팅시에 경로가 cmd의 현재 경로로 설정되는 것 방지
 version_hash = calculate_md5.file(ProcessPath) if ProcessName != "python.exe" else ""
@@ -163,7 +165,9 @@ def getOsupath():
         exceptionE()
         return None
 osu_path = getOsupath()
-if not osu_path: osu_path = input("Error! Not Found osu! Path! \nInput FULL osu! Root Folder Path : ").replace("\\", "/")
+if not osu_path:
+    root = tk.Tk().withdraw()  # Tkinter 창 숨기기
+    osu_path = filedialog.askopenfilename(title="Error! Not Found osu! Path! | Select osu!.exe", filetypes=[("osu! executable", "osu!.exe")]).replace("/osu!.exe", "")
 
 cfg = [i for i in os.listdir(osu_path) if i.endswith(".cfg")]
 cfg = f"{osu_path}/osu!.{os.environ.get('USERNAME')}.cfg" if f"osu!.{os.environ.get('USERNAME')}.cfg" in cfg else None
