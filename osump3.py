@@ -21,7 +21,7 @@ import math
 import tkinter as tk
 from tkinter import filedialog
 
-version = "2.3.11"
+version = "2.3.12"
 ProcessName = os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0]
 ProcessPath = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(sys.argv[0]) #환경 변수 세팅시에 경로가 cmd의 현재 경로로 설정되는 것 방지
 version_hash = calculate_md5.file(ProcessPath) if ProcessName != "python.exe" else ""
@@ -305,9 +305,8 @@ def ccmd():
             elif i.lower().startswith("search "): #type(uSel) = dict
                 q = i.lower().replace("search ", "")
                 if q:
-                    sni = 1; sn = []
-                    for bs in BeatmapSets:
-                        if q in bs.lower(): print(f"    {sni}. | {bs}"); sn.append(bs); sni += 1
+                    sn = [bs for bs in BeatmapSets if q in bs.lower()]
+                    for sni, bs in enumerate(sn, 1): print(f"    {sni:{len(str(len(sn)))}d}. | {bs}")
                     if sn:
                         try:
                             sn = sn[int(input("\n    재생할 곡의 번호를 입력하세요! : ")) - 1]
