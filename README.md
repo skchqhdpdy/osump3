@@ -5,7 +5,7 @@
 ---
 ## version
 - version : 2.3.12
-- version_hash : 
+- version_hash : 1db4840205c672aeac559e0451bbde25
 - [update](https://github.com/skchqhdpdy/osump3/blob/main/update.md)
 ---
 ---
