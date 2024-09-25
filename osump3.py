@@ -50,7 +50,7 @@ def dl(link, Path):
     else: print(f"    Error! | status_code = {d.status_code} | {link}")
     return d
 
-def per2dB(volume): return 20 * math.log10(volume / 100)
+def per2dB(volume): return 20 * math.log10(volume / 100) if volume > 0 else -float('inf')
 
 def osu_file_read(songname):
     Beatmap = random.choice([i for i in os.listdir(f"{osu_path}/Songs/{songname}") if i.endswith(".osu")])
@@ -320,7 +320,7 @@ def ccmd():
                                 def preview(): #다른 모듈 사용
                                     sound = AudioSegment.from_file(f"{osu_path}/Songs/{sn}/{AudioFilename_search}")
                                     sound = sound.apply_gain(per2dB(vol))
-                                    sound = sound[PreviewTime_search:PreviewTime_search + 30000]
+                                    sound = sound[PreviewTime_search:PreviewTime_search + 30821]
                                     play_obj = sa.play_buffer(sound.raw_data, num_channels=sound.channels,
                                         bytes_per_sample=sound.sample_width,
                                         sample_rate=sound.frame_rate)
