@@ -8,4 +8,5 @@
 - Update (v2.3.8) : video (vi) 명령어 추가, search에 미리듣기 video 옵션 추가 (재생은 다른 모듈 사용함), simpleaudio==1.0.4 추가
 - Update (v2.3.9) : 변수 이름 변경 (에러 수정)
 - Update (v2.3.10) : 레지스트리에서 osu! 경로 못찾을 때 직접 입력에서 탐색기 osu!.exe 파일 선택으로 변경, tkinter 패키지 추가, venv-osump3 가상환경 폴더 추가 (python 3.6.8)
+- Update (v2.3.11) : search 에 of 옵션 추가
 ---
