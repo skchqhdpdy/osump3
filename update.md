@@ -10,4 +10,5 @@
 - Update (v2.3.10) : 레지스트리에서 osu! 경로 못찾을 때 직접 입력에서 탐색기 osu!.exe 파일 선택으로 변경, tkinter 패키지 추가, venv-osump3 가상환경 폴더 추가 (python 3.6.8)
 - Update (v2.3.11) : search 에 of 옵션 추가
 - Update (v2.3.12) : search 에서 곡 목록 출력할 때 숫자 자릿수 맞춤, 업데이트시 old 버전은 다시 삭제로 변경
+- Update (v2.3.11) : search 에 폴더열기에서 bid 조회 막음 (필요없는데 시간만 걸림)
 ---

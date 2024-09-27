@@ -21,7 +21,7 @@ import math
 import tkinter as tk
 from tkinter import filedialog
 
-version = "2.3.12"
+version = "2.3.13"
 ProcessName = os.popen(f'tasklist /svc /FI "PID eq {os.getpid()}"').read().strip().split("\n")[2].split(" ")[0]
 ProcessPath = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(sys.argv[0]) #환경 변수 세팅시에 경로가 cmd의 현재 경로로 설정되는 것 방지
 version_hash = calculate_md5.file(ProcessPath) if ProcessName != "python.exe" else ""
@@ -311,7 +311,7 @@ def ccmd():
                         try:
                             sn = sn[int(input("\n    재생할 곡의 번호를 입력하세요! : ")) - 1]
                             option = int(input("    바로 재생 = 1, 바로 다음 대기열 = 2, 미리듣기 = 3, 폴더열기 = 4, 이미지 보기 = 5, 동영상 보기 = 6 : "))
-                            AudioFilename_search, PreviewTime_search, BeatmapID_search, BeatmapBG_search, BeatmapVideo_search = osu_file_read(sn) if option != 1 and option != 2 else (None, None, None, None, None)
+                            AudioFilename_search, PreviewTime_search, BeatmapID_search, BeatmapBG_search, BeatmapVideo_search = osu_file_read(sn) if option != 1 and option != 2 and option != 4 else (None, None, None, None, None)
                             if option == 1: uSel = {"sn": sn}; skip_song()
                             elif option == 2: uSel = {"sn": sn}
                             elif option == 3:
