@@ -14,3 +14,16 @@ black + white--> 격창 리믹스? --> Yuugure 내가 아는거 아님 --> bloom
 + 중간에 솔플 드가서 곡 바꾸면 그 곡만 바뀜
 ㅅㅂ 이게 뭐냐 대가리 ㅈㄴ 굴려야겠네
 참고하기
+
+
+
+
+v2.3.13 bug
+100%|██████████████████| 13.3M/13.3M [11:11<00:00, 20.8kB/s]
+
+Traceback (most recent call last):
+  File "osump3.py", line 110, in <module>
+  File "osump3.py", line 102, in update_osump3
+PermissionError: [WinError 5] 액세스가 거부되었습니다: 'C:\\Program Files v2\\osump3-v2.3.12.exe'
+
+version Check Fail! ignore? (y/n) :
